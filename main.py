@@ -1,14 +1,23 @@
+"""
+A module for creating a map
+"""
+
 
 import math
 import argparse
 import folium as fo
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
+
+
 def parse_info():
+    """
+    Parsing the arguments
+    """
     parser = argparse.ArgumentParser(description='Creaing a map')
-    parser.add_argument('-year', type = int, help='needed year')
-    parser.add_argument('-latitude', type = float, help='your latitude')
-    parser.add_argument('-longitude', type = float, help='your longitude')
+    parser.add_argument('-year', type=int, help='needed year')
+    parser.add_argument('-latitude', type=float, help='your latitude')
+    parser.add_argument('-longitude', type=float, help='your longitude')
     parser.add_argument('-file', type=str, help='The path to a graph file')
     args = parser.parse_args()
     year = args.year
@@ -17,7 +26,14 @@ def parse_info():
     file_name = args.file
     return year, latitude, longitude, file_name
 
-def find_disance(lat_1, lat_2, lon_1, lon_2):
+
+def find_distance(lat_1, lat_2, lon_1, lon_2):
+    """
+    Finding the distance between to coords on Earth
+    (float, float, float, float) -> float
+    >>> find_distance(12.2344, -23.5637, 16.9087, -44.2746)
+    7731.144889848772
+    """
     r = 6356
     rad_1 = ((lat_2 - lat_1)/2 * math.pi)/180
     rad_2 = ((lon_2 - lon_1)/2 * math.pi)/180
@@ -25,11 +41,16 @@ def find_disance(lat_1, lat_2, lon_1, lon_2):
     sin_2 = math.sin(rad_2) ** 2
     arg = sin_1 + (math.cos(lat_1 * math.pi / 180) * math.cos(lat_2 * math.pi / 180) * sin_2)
     arg_1 = math.sqrt(arg)
-    dist = 2 * r * math.asin(arg_1) 
+    dist = 2 * r * math.asin(arg_1)
     return dist
 
+
 def read_file(file_name, year):
-    with open(file_name, encoding = "utf8", errors = 'ignore') as file:
+    """
+    Reading a file and returns a list with needed args
+    (str, int) -> list
+    """
+    with open(file_name, encoding="utf8", errors='ignore') as file:
             lines = file.readlines()
             info = []
             for i in range(len(lines)):
@@ -71,7 +92,13 @@ def read_file(file_name, year):
                         cur_info.append(lines[i][1])
                         info.append(cur_info)
     return info
+
+
 def get_coords_and_dist(lat, lon, info_locations):
+    """
+    Gets coordinations of needed places and finds distance
+    (float, float, list) -> list
+    """
     geolocator = Nominatim(user_agent="main.py")
     geocode = RateLimiter(geolocator.geocode, min_delay_seconds=0.001)
     for loc in info_locations:
@@ -79,7 +106,7 @@ def get_coords_and_dist(lat, lon, info_locations):
             location = geolocator.geocode(loc[2])
             loc.append(location.latitude)
             loc.append(location.longitude)
-            distance = find_disance(lat, location.latitude, lon, location.longitude)
+            distance = find_distance(lat, location.latitude, lon, location.longitude)
             loc.append(distance)
         except:
             info_locations.remove(loc)
@@ -90,7 +117,12 @@ def get_coords_and_dist(lat, lon, info_locations):
             new_info.append(info_locations[i])
     return new_info
 
+
 def get_min(new_info):
+    """
+    Finds 6 locations with the smallest distance and returns a list
+    (list) -> list
+    """
     min = 100000000
     closest_locs = []
     while len(closest_locs) != 6:
@@ -111,7 +143,13 @@ def get_min(new_info):
             closest_locs.append(current_loc)
             new_info.remove(current_loc)
     return closest_locs
+
+
 def get_max(new_info):
+    """
+    Finds 6 locations with the largest distance and returns a list
+    (list) -> list
+    """
     maximum = 0
     farthest_locs = []
     while len(farthest_locs) != 6:
@@ -133,7 +171,12 @@ def get_max(new_info):
             new_info.remove(current_loc)
     return farthest_locs
 
+
 def create_a_map(farthest_locs, closest_locs, lat, lon):
+    """
+    Creats a map and saves it
+    """
+
     html_1 = """<h4>{} closest:</h4>
     Location name: {} <br>
     Distance: {} km <br>
@@ -145,7 +188,7 @@ def create_a_map(farthest_locs, closest_locs, lat, lon):
     Movie, filmed here: {}
     """
     map = fo.Map(location=[lat, lon], zoom_start=6)
-  
+
     fg_list = []
     latitude = []
     longitude = []
@@ -159,12 +202,12 @@ def create_a_map(farthest_locs, closest_locs, lat, lon):
         item[5] = round(item[5], 0)
         distances.append(item[5])
         movie.append(item[0])
-    number_1 = ["The","Second","Third","Fourth","Fifth","Sixth"]
-    colours_1 = ["darkred", "red","red", "red", "red", "red"]
-    fg = fo.FeatureGroup(name= "The closest places, where movies were filmed")
+    number_1 = ["The", "Second", "Third", "Fourth", "Fifth", "Sixth"]
+    colours_1 = ["darkred", "red", "red", "red", "red", "red"]
+    fg = fo.FeatureGroup(name="The closest places, where movies were filmed")
     for lt, ln, pl, ds, mv, num, col in zip(latitude, longitude, places, distances, movie, number_1, colours_1):
-        iframe = fo.IFrame(html=html_1.format(num, pl, ds, mv), width = 400, height = 150)
-        fg.add_child(fo.Marker(location=[lt, ln], popup=fo.Popup(iframe), icon=fo.Icon(color = col)))
+        iframe = fo.IFrame(html=html_1.format(num, pl, ds, mv), width=400, height=150)
+        fg.add_child(fo.Marker(location=[lt, ln], popup=fo.Popup(iframe), icon=fo.Icon(color=col)))
     fg_list.append(fg)
 
     latitude = []
@@ -179,25 +222,31 @@ def create_a_map(farthest_locs, closest_locs, lat, lon):
         item[5] = round(item[5], 0)
         distances.append(item[5])
         movie.append(item[0])
-    number_2 = ["The","Second","Third","Fourth","Fifth","Sixth"]
+    number_2 = ["The", "Second", "Third", "Fourth", "Fifth", "Sixth"]
     colours_2 = ["darkblue", "blue", "blue", "blue", "blue", "blue"]
-    fg = fo.FeatureGroup(name= "The farthest places, where movies were filmed")
+    fg = fo.FeatureGroup(name="The farthest places, where movies were filmed")
     for lt, ln, pl, ds, mv, num, col in zip(latitude, longitude, places, distances, movie, number_2, colours_2):
         iframe = fo.IFrame(html=html_2.format(num, pl, ds, mv), width=400, height=150)
-        fg.add_child(fo.Marker(location=[lt, ln], popup=fo.Popup(iframe), icon=fo.Icon(color = col, )))
+        fg.add_child(fo.Marker(location=[lt, ln], popup=fo.Popup(iframe), icon=fo.Icon(color=col, )))
     fg_list.append(fg)
 
-    for fg in fg_list: 
+    for fg in fg_list:
         map.add_child(fg)
     map.add_child(fo.LayerControl())
-    map.save('Map_121.html')
+    map.save('New_map.html')
+
+
 def main():
+    """
+    main func
+    """
     year, lat, lon, file_name,  = parse_info()
     info = read_file(file_name, year)
     info_with_coords = get_coords_and_dist(lat, lon, info)
     closest_locs = get_min(info_with_coords)
     farthest_locs = get_max(info_with_coords)
     create_a_map(farthest_locs, closest_locs, lat, lon)
-# main(1999, "locations.list", 52.3676, 4.9041)
+
+
 if __name__ == "__main__":
     main()
